@@ -70,4 +70,5 @@ sftp-config.json
 # Node ignores
 node_modules
 _uploads
+config.ini
 

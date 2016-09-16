@@ -116,7 +116,7 @@
                 });
                 break;
             case 'addFolderMd':
-                boxclient.getBoxClient().folderMetadata.create({
+                boxclient.folderMetadata.create({
                     'access_token': access_token,
                     'path_params': {
                         'fid': yargs.fid,
@@ -175,13 +175,19 @@
                 });
                 break;
             case 'thumbnail':
-                boxclient.file.getThumbnail({
+                let args = {
                     'access_token': access_token,
                     'path_params': {
                         'fid': yargs.fid,
                         'extension': 'png'
                     }
-                });
+                };
+                if (yargs.link) {
+                    args.headers = {
+                        'BoxApi': 'shared_link=' + yargs.link
+                    };
+                }
+                boxclient.file.getThumbnail(args);
                 break;
             case 'preview':
                 boxclient.file.createPreviewLink({
@@ -264,7 +270,7 @@
         if (action === 'oauth') {
             open(boxapi.getOAuthURL());
         } else if (action === 'token' && yargs.code) {
-            boxclient.getBoxClient().token.code({
+            boxclient.token.code({
                 'body_params': {
                     'code': yargs.code
                 },
@@ -275,7 +281,7 @@
                 let json = response.body;
                 winston.log("info", "===> server token:", json);
                 const token = JSON.parse(json);
-                boxclient.getBoxClient().users.create({
+                boxclient.users.create({
                     'access_token': token.access_token,
                     'body_params': {
                         "name": yargs.name,
