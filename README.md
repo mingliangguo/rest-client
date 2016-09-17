@@ -45,3 +45,13 @@ The Rest Client uses [winston](https://github.com/winstonjs/winston) as the logg
 ```
 LOG_LEVEL=debug npm run box -- --action=user --uid=me
 ```
+
+# FAQ
+
+## Convert pkcs key file to pem key
+
+Sometime you might only have a pkcs key file, but need to convert to pem for use in node. Using the following command to get it done:
+
+```
+openssl pkcs12 -in my-privatekey.p12 -out privatekey.pem -nodes
+```
