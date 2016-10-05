@@ -13,6 +13,8 @@
         TOKEN_FILE = path.resolve('./', config.BOX_TOKEN_JSON_FILE),
         THUMBNAIL_FILE = path.resolve('./', 'thumbnail.png');
 
+    let boxclient = null;
+
     let getBoxRestDefinition = function() {
         return {
             'token': {
@@ -221,24 +223,281 @@
     };
 
 
-    let getBoxClient = function() {
-        let jsonDefinitions = getBoxRestDefinition();
-        return RestApi.getRestApi(BOX_API_HOST, jsonDefinitions, {
-            'requestHandler': boxRequestHandler
-        });
+    exports.getBoxClient = function() {
+        if (!boxclient) {
+            let jsonDefinitions = getBoxRestDefinition();
+            boxclient = RestApi.getRestApi(BOX_API_HOST, jsonDefinitions, {
+                'requestHandler': boxRequestHandler
+            });
+        }
+        return boxclient;
     };
-    exports.getBoxClient = getBoxClient;
 
-    let getOAuthURL = function() {
+    exports.getOAuthURL = function() {
         let url = [
             config.BOX_OAUTH_BASE_URL,
-            "/authorize?response_type=code&client_id=", 
-            config.BOX_CLIENT_ID, 
+            "/authorize?response_type=code&client_id=",
+            config.BOX_CLIENT_ID,
             "&state=security_tokenDKnhMJatFipTAnM0nHlZA"
         ].join("");
         // always dump the oauth URL to the console
         console.log("info", url);
         return url;
     };
-    exports.getOAuthURL = getOAuthURL;
+
+    exports.getFolderCollab = function(fid, access_token) {
+        return boxclient.folder.getCollab({
+            'access_token': access_token,
+            'path_params': {
+                'fid': fid
+            }
+        });
+    };
+
+    exports.getCollab = function(cid, access_tokne) {
+        return boxclient.collaboration.get({
+            'access_token': access_token,
+            'path_params': {
+                'cid': cid
+            }
+        });
+    };
+
+    exports.addCollab = function(fid, role, uid, login, access_token) {
+        let postParams = {
+            'access_token': access_token,
+            'body_params': {
+                "item": {
+                    "id": fid,
+                    "type": "folder"
+                },
+                "accessible_by": {
+                    "type": "user"
+                },
+                "role": role || "editor"
+            }
+        };
+        if (uid) {
+            postParams.body_params.accessible_by.id = uid;
+        } else if (login) {
+            postParams.body_params.accessible_by.login = login;
+        }
+        return boxclient.collaborations.add(postParams);
+    };
+
+    exports.createPreviewLink = function(fid, access_token) {
+        return boxclient.file.createPreviewLink({
+            'access_token': access_token,
+            'path_params': {
+                'fid': fid
+            }
+        });
+    };
+
+    exports.getThumbnail = function(fid, link, access_token) {
+        let args = {
+            'access_token': access_token,
+            'path_params': {
+                'fid': fid,
+                'extension': 'png'
+            }
+        };
+        if (link) {
+            args.headers = {
+                'BoxApi': 'shared_link=' + link
+            };
+        }
+        return boxclient.file.getThumbnail(args);
+    };
+
+    exports.getFileInfo = function(fid, access_token) {
+        return boxclient.file.info({
+            'access_token': access_token,
+            'path_params': {
+                'fid': fid
+            }
+        });
+    };
+
+    exports.getFolderItems = function(fid, fields, access_token) {
+        return boxclient.folder.getItems({
+            'access_token': access_token,
+            'path_params': {
+                'fid': fid
+            },
+            'query_params': {
+                'fields': fields
+            }
+        });
+    };
+
+    exports.searchMD = function(access_token) {
+        return boxclient.search.get({
+            'access_token': access_token,
+            'query_params': {
+                'type': 'folder',
+                'scope': 'enterprise_content',
+                'ancestor_folder_ids': '6887024810',
+                'mdfilters': JSON.stringify([{
+                    'templateKey': 'IBM_TASKFLOW_METADATA_TEMPLATE_TEST',
+                    'scope': 'enterprise',
+                    'filters': {
+                        'taskflowTemplateRefName': 'greatTaskflow'
+                    }
+                }])
+            }
+        });
+    };
+
+    exports.getFolderMD = function(fid, tname, access_token) {
+        return boxclient.folderMetadata.get({
+            'access_token': access_token,
+            'path_params': {
+                'fid': fid,
+                'scope': 'enterprise',
+                'template': tname
+            }
+        });
+    };
+
+    exports.addFolderMD = function(fid, tname, tval, access_token) {
+        return boxclient.folderMetadata.create({
+            'access_token': access_token,
+            'path_params': {
+                'fid': fid,
+                'scope': 'enterprise',
+                'template': tname
+            },
+            'body_params': {
+                'taskflowTemplateRefName': tval
+            }
+        });
+    };
+
+    exports.getFolderInfo = function(fid, access_token) {
+        return boxclient.folder.info({
+            'access_token': access_token,
+            'path_params': {
+                'fid': fid
+            }
+        });
+    };
+
+    exports.getSharedItems = function(link, access_token) {
+        return boxclient.sharedItems.get({
+            'access_token': access_token,
+            'headers': {
+                'BoxApi': 'shared_link=' + link
+            }
+        });
+    };
+
+    exports.createSharedLink = function(fid, access_token) {
+        return boxclient.file.createSharedLink({
+            'access_token': access_token,
+            'path_params': {
+                'fid': fid
+            }
+        });
+    };
+
+    exports.createFolder = function(name, pid, access_token) {
+        return boxclient.folders.post({
+            'access_token': access_token,
+            'body_params': {
+                "name": name,
+                "parent": {
+                    "id": pid || '0'
+                }
+            }
+        });
+    };
+
+    exports.getUsers = function(filter, limit, offset, login, access_token) {
+        let params = {
+            'access_token': access_token,
+            'query_params': {
+                'fields': 'id,name,login,language,timezone,avatar_url,enterprise',
+                'user_type': 'all',
+                'filter_term': filter,
+                'limit': limit || 100,
+                'offset': offset || 0
+            }
+        };
+        if (login) {
+            params.query_params.filter_term = login;
+            params.query_params.user_type = 'external';
+        }
+        return boxclient.users.get(params);
+    };
+
+    exports.refreshToken = function(refresh_token) {
+        // boxclient.getRefreshedAuthToken(token);
+        return boxclient.token.refresh({
+            'body_params': {
+                'refresh_token': refresh_token
+            },
+            'contentType': 'form'
+        });
+    };
+
+    exports.getUserInfo = function(uid, fields, access_token) {
+        return boxclient.user.info({
+            'access_token': access_token,
+            'path_params': {
+                'uid': uid
+            },
+            'query_params': {
+                'fields': fields || 'id,name,login,language,timezone,avatar_url,enterprise'
+            }
+        });
+    };
+
+    exports.createUser = function(name, login, access_token) {
+        // requires server token
+        return boxclient.users.create({
+            'access_token': access_token,
+            'body_params': {
+                "name": yargs.name,
+                "login": yargs.login
+            }
+        });
+    };
+
+    exports.createViewPath = function(fid, uid, role, access_token) {
+        return boxclient.collaborations.add({
+            'access_token': access_token,
+            'body_params': {
+                "item": {
+                    "id": fid,
+                    "type": "folder"
+                },
+                "accessible_by": {
+                    "id": uid,
+                    "type": "user"
+                },
+                "can_view_path": true,
+                "role": role || "editor"
+            }
+        });
+    };
+
+    exports.requestAccessToken = function(code) {
+        return boxclient.token.code({
+            'body_params': {
+                'code': code
+            },
+            'contentType': 'form'
+        });
+    };
+
+    exports.createAppUser = function(name, access_token) {
+        return boxclient.users.create({
+            'access_token': access_token,
+            'body_params': {
+                "name": name,
+                "is_platform_access_only": true
+            }
+        });
+    };
 })();

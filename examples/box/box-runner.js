@@ -7,7 +7,7 @@
         fs = require('fs-extra'), //File System - for file manipulation
         open = require('open'),
         boxapi = require('./box-client.js'),
-        boxclient = require('./box-client.js').getBoxClient(),
+        boxclient = boxapi.getBoxClient(),
         winston = require('winston'),
         path = require('path'),
         config = require('../../lib/config.js'),
@@ -30,232 +30,68 @@
         switch (action) {
             case 'refresh':
                 // boxclient.getRefreshedAuthToken(token);
-                boxclient.token.refresh({
-                    'body_params': {
-                        'refresh_token': token.refresh_token
-                    },
-                    'contentType': 'form'
-                });
+                boxapi.refreshToken(token.refresh_token);
                 break;
             case 'user':
-                let uid = yargs.uid;
-                winston.log("info", "--- enter user :" + action + ", uid: " + uid);
-                boxclient.user.info({
-                    'access_token': access_token,
-                    'path_params': {
-                        'uid': yargs.uid
-                    },
-                    'query_params': {
-                        'fields': 'id,name,login,language,timezone,avatar_url,enterprise'
-                    }
-                });
+                boxapi.getUserInfo(yargs.uid, yargs.fields, access_token);
                 break;
             case 'users':
-                winston.log("info", "--- enter users :" + action);
-                let params = {
-                    'access_token': access_token,
-                    'query_params': {
-                        'fields': 'id,name,login,language,timezone,avatar_url,enterprise',
-                        'user_type': 'all'
-                    }
-                };
-                if (yargs.login) {
-                    params.query_params.filter_term = yargs.login;
-                    params.query_params.user_type = 'external';
-                }
-                boxclient.users.get(params);
+                boxapi.getUsers(yargs.filter, yargs.limit, yargs.offset, yargs.login, access_token);
                 break;
             case 'createUser':
                 // requires server token
-                boxclient.users.create({
-                    'access_token': access_token,
-                    'body_params': {
-                        "name": yargs.name,
-                        "login": yargs.login
-                    }
-                });
+                boxapi.createUser(yargs.name, yargs.login, access_token);
                 break;
             case 'createFolder':
-                winston.log("info", '--- begin create folder:');
-                boxclient.folders.post({
-                    'access_token': access_token,
-                    'body_params': {
-                        "name": yargs.name,
-                        "parent": {
-                            "id": yargs.pid || '0'
-                        }
-                    }
-                });
+                boxapi.createFolder(yargs.name, yargs.pid, access_token);
                 break;
             case 'sharedLink':
-                winston.log("info", "--- enter sharedLink :" + action);
-                const fid = yargs.fid;
-                boxclient.file.createSharedLink({
-                    'access_token': access_token,
-                    'path_params': {
-                        'fid': yargs.fid
-                    }
-                });
+                boxapi.createSharedLink(yargs.fid, access_token);
                 break;
             case 'sharedItems':
-                winston.log("info", "--- enter sharedItems :" + action);
-                const link = yargs.link;
-                boxclient.sharedItems.get({
-                    'access_token': access_token,
-                    'headers': {
-                        'BoxApi': 'shared_link=' + yargs.link
-                    }
-                });
+                boxapi.getSharedItems(yargs.link, access_token);
                 break;
             case 'folder':
-                boxclient.folder.info({
-                    'access_token': access_token,
-                    'path_params': {
-                        'fid': yargs.fid
-                    }
-                });
+                boxapi.getFolderInfo(yargs.fid, access_token);
                 break;
             case 'addFolderMd':
-                boxclient.folderMetadata.create({
-                    'access_token': access_token,
-                    'path_params': {
-                        'fid': yargs.fid,
-                        'scope': 'enterprise',
-                        'template': yargs.tname
-                    },
-                    'body_params': {
-                        'taskflowTemplateRefName': yargs.tval
-                    }
-                });
+                boxapi.addFolderMD(yargs.fid, yargs.tname, yargs.tval, access_token);
                 break;
             case 'getFolderMd':
-                boxclient.folderMetadata.get({
-                    'access_token': access_token,
-                    'path_params': {
-                        'fid': yargs.fid,
-                        'scope': 'enterprise',
-                        'template': yargs.tname
-                    }
-                });
+                boxapi.getFolderMD(yargs.fid, yargs.tname, access_token);
                 break;
             case 'searchMD':
-                boxclient.search.get({
-                    'access_token': access_token,
-                    'query_params': {
-                        'type': 'folder',
-                        'scope': 'enterprise_content',
-                        'ancestor_folder_ids': '6887024810',
-                        'mdfilters': JSON.stringify([{
-                            'templateKey': 'IBM_TASKFLOW_METADATA_TEMPLATE_TEST',
-                            'scope': 'enterprise',
-                            'filters': {
-                                'taskflowTemplateRefName': 'greatTaskflow'
-                            }
-                        }])
-                    }
-                });
+                boxapi.searchMD(access_token);
                 break;
             case 'folderItems':
-                boxclient.folder.getItems({
-                    'access_token': access_token,
-                    'path_params': {
-                        'fid': yargs.fid
-                    },
-                    'query_params': {
-                        'fields': yargs.fields
-                    }
-                });
+                boxapi.getFolderItems(yargs.fid, yargs.fields, access_token);
                 break;
             case 'file':
-                boxclient.file.info({
-                    'access_token': access_token,
-                    'path_params': {
-                        'fid': yargs.fid
-                    }
-                });
+                boxapi.getFileInfo(yargs.fid, access_token);
                 break;
             case 'thumbnail':
-                let args = {
-                    'access_token': access_token,
-                    'path_params': {
-                        'fid': yargs.fid,
-                        'extension': 'png'
-                    }
-                };
-                if (yargs.link) {
-                    args.headers = {
-                        'BoxApi': 'shared_link=' + yargs.link
-                    };
-                }
-                boxclient.file.getThumbnail(args);
+                boxapi.getThumbnail(yargs.fid, yargs.link, access_token);
                 break;
             case 'preview':
-                boxclient.file.createPreviewLink({
-                    'access_token': access_token,
-                    'path_params': {
-                        'fid': yargs.fid
-                    }
-                });
+                boxapi.createPreviewLink(yargs.fid, access_token);
                 break;
             case 'addCollab':
-                let postParams = {
-                    'access_token': access_token,
-                    'body_params': {
-                        "item": {
-                            "id": yargs.fid,
-                            "type": "folder"
-                        },
-                        "accessible_by": {
-                            "type": "user"
-                        },
-                        "role": yargs.role || "editor"
-                    }
-                };
-                if (yargs.uid) {
-                    postParams.body_params.accessible_by.id = yargs.uid;
-                } else if (yargs.login) {
-                    postParams.body_params.accessible_by.login = yargs.login;
-                }
-                boxclient.collaborations.add(postParams);
+                boxapi.addCollab(yargs.fid, yargs.role, yargs.uid, yargs.login, access_token);
                 break;
             case 'getFolderCollab':
-                boxclient.folder.getCollab({
-                    'access_token': access_token,
-                    'path_params': {
-                        'fid': yargs.fid
-                    }
-                });
+                boxapi.getFolderCollab(yargs.fid, access_token);
                 break;
             case 'getCollab':
-                boxclient.collaboration.get({
-                    'access_token': access_token,
-                    'path_params': {
-                        'cid': yargs.cid
-                    }
-                });
+                boxapi.getCollab(yargs.cid, access_token);
                 break;
             case 'viewPath':
-                boxclient.collaborations.add({
-                    'access_token': access_token,
-                    'body_params': {
-                        "item": {
-                            "id": yargs.fid,
-                            "type": "folder"
-                        },
-                        "accessible_by": {
-                            "id": yargs.uid,
-                            "type": "user"
-                        },
-                        "can_view_path": true,
-                        "role": yargs.role || "editor"
-                    }
-                });
+                boxapi.createViewPath(yargs.fid, yargs.uid, yargs.role, access_token);
                 break;
             case 'oauth':
                 open(boxapi.getOAuthURL());
                 break;
             default:
-                console.error("$$$ Action:" + yargs.action + " is not supported!!!");
+                winston.log("error", "Action:" + yargs.action + " is not supported!!!");
                 break;
         }
     };
@@ -270,25 +106,7 @@
         if (action === 'oauth') {
             open(boxapi.getOAuthURL());
         } else if (action === 'token' && yargs.code) {
-            boxclient.token.code({
-                'body_params': {
-                    'code': yargs.code
-                },
-                'contentType': 'form'
-            });
-        } else if (action === 'createAppUser') {
-            serverToken.getServerToken(function(response) {
-                let json = response.body;
-                winston.log("info", "===> server token:", json);
-                const token = JSON.parse(json);
-                boxclient.users.create({
-                    'access_token': token.access_token,
-                    'body_params': {
-                        "name": yargs.name,
-                        "is_platform_access_only": true
-                    }
-                });
-            });
+            boxapi.requestAccessToken(yargs.code);
         } else if (config.USE_SERVER_TOKEN === true) {
             winston.log("info", "===> use server token");
             serverToken.getServerToken((res) => {
