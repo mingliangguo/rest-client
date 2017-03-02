@@ -16,14 +16,18 @@
 
     winston.level = process.env.LOG_LEVEL || 'info';
 
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
     const action_handler = function(json) {
         let token = null;
         try {
             token = JSON.parse(json);
         } catch (e) {
             console.error("==> Error occured while parsing token json, :", json);
+            throw new Error('Quit since no token to use!!!');
         }
         const access_token = token.access_token;
+        // const access_token = '31GJiZgO2KI04chxAO4CEgIBI9hzQhjf';
         // winston.log("info", 'access_token: ' + token.access_token, token);
 
         const action = yargs.action;
@@ -48,17 +52,23 @@
             case 'sharedLink':
                 boxapi.createSharedLink(yargs.fid, access_token);
                 break;
+            case 'copyFile':
+                boxapi.copyFile(yargs.fid, yargs.pid, access_token);
+                break;
             case 'sharedItems':
                 boxapi.getSharedItems(yargs.link, access_token);
                 break;
             case 'folder':
-                boxapi.getFolderInfo(yargs.fid, access_token);
+                boxapi.getFolderInfo(yargs.fid, yargs.fields, access_token);
                 break;
             case 'addFolderMd':
                 boxapi.addFolderMD(yargs.fid, yargs.tname, yargs.tval, access_token);
                 break;
             case 'getFolderMd':
                 boxapi.getFolderMD(yargs.fid, yargs.tname, access_token);
+                break;
+            case 'renameFolder':
+                boxapi.renameFolder(yargs.fid, yargs.name, access_token);
                 break;
             case 'searchMD':
                 boxapi.searchMD(access_token);
@@ -67,7 +77,7 @@
                 boxapi.getFolderItems(yargs.fid, yargs.fields, access_token);
                 break;
             case 'file':
-                boxapi.getFileInfo(yargs.fid, access_token);
+                boxapi.getFileInfo(yargs.fid, yargs.fields, access_token);
                 break;
             case 'thumbnail':
                 boxapi.getThumbnail(yargs.fid, yargs.link, access_token);
@@ -89,6 +99,12 @@
                 break;
             case 'oauth':
                 open(boxapi.getOAuthURL());
+                break;
+            case 'authorize':
+                boxapi.initialAuthorize(yargs.redirect_uri);
+                break;
+            case 'createMetadata':
+                boxapi.createMetadata(access_token, yargs.templateKey, yargs.templateName, yargs.fields);
                 break;
             default:
                 winston.log("error", "Action:" + yargs.action + " is not supported!!!");

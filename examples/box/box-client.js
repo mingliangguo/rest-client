@@ -17,6 +17,27 @@
 
     let getBoxRestDefinition = function() {
         return {
+            'authorize': {
+                'baseUrl': 'https://account.box.com',
+                'endpoint': '/api/oauth2/authorize',
+                'methods': [{
+                        'id': 'get',
+                        'method': 'GET',
+                        'query_params': {
+                            'response_type': 'code',
+                            'client_id': config.BOX_CLIENT_ID
+                        }
+                    },
+                    {
+                        'id': 'post',
+                        'method': 'POST',
+                        'query_params': {
+                            'response_type': 'code',
+                            'client_id': config.BOX_CLIENT_ID
+                        }
+                    }
+                ]
+            },
             'token': {
                 'endpoint': '/oauth2/token',
                 'methods': [{
@@ -93,6 +114,9 @@
                         }
                     }
                 }, {
+                    'id': 'rename',
+                    'method': 'PUT'
+                }, {
                     'id': 'createPreviewLink',
                     'method': 'GET',
                     'query_params': {
@@ -127,6 +151,15 @@
                     'body_params': {
                         'shared_link': {
                             'access': 'open'
+                        }
+                    }
+                }, {
+                    'id': 'copy',
+                    'path': '/copy',
+                    'method': 'POST',
+                    'body_params': {
+                        'parent': {
+                            'id': 'pid'
                         }
                     }
                 }, {
@@ -184,6 +217,20 @@
                     'method': 'GET',
                     'query_params': {
                         "fields": "name,login,language,role,timezone,enterprise"
+                    }
+                }]
+            },
+            'metadata': {
+                'endpoint': '/2.0/metadata_templates',
+                'methods': [{
+                    'id': 'create',
+                    'method': 'POST',
+                    'path': '/schema',
+                    'body_params': {
+                        'scope': 'enterprise',
+                        'templateKey': '',
+                        'displayName': '',
+                        'fields': []
                     }
                 }]
             }
@@ -310,11 +357,14 @@
         return boxclient.file.getThumbnail(args);
     };
 
-    exports.getFileInfo = function(fid, access_token) {
+    exports.getFileInfo = function(fid, fields, access_token) {
         return boxclient.file.info({
             'access_token': access_token,
             'path_params': {
                 'fid': fid
+            },
+            'query_params': {
+                'fields': fields
             }
         });
     };
@@ -374,11 +424,14 @@
         });
     };
 
-    exports.getFolderInfo = function(fid, access_token) {
+    exports.getFolderInfo = function(fid, fields, access_token) {
         return boxclient.folder.info({
             'access_token': access_token,
             'path_params': {
                 'fid': fid
+            },
+            'query_params': {
+                'fields': fields
             }
         });
     };
@@ -397,6 +450,31 @@
             'access_token': access_token,
             'path_params': {
                 'fid': fid
+            }
+        });
+    };
+    exports.renameFolder = function(fid, name, access_token) {
+        return boxclient.folder.rename({
+            'access_token': access_token,
+            'path_params': {
+                'fid': fid
+            },
+            'body_params': {
+                'name': name
+            }
+        });
+    };
+
+    exports.copyFile = function(fid, pid, access_token) {
+        return boxclient.file.copy({
+            'access_token': access_token,
+            'path_params': {
+                'fid': fid
+            },
+            'body_params': {
+                'parent': {
+                    'id': pid
+                }
             }
         });
     };
@@ -500,4 +578,41 @@
             }
         });
     };
+
+    exports.initialAuthorize = function(redirect_uri, state) {
+        return boxclient.authorize.get(redirect_uri || 'http://127.0.0.1', state);
+    };
+
+    exports.postAuthorize = function(redirect_uri, state, cookies) {
+        let args = {
+            'headers': {
+                'Cookie': cookies
+            },
+            'query_params': {
+                'redirect_uri': redirect_uri
+            }
+        };
+
+        return boxclient.authorize.post(args);
+    };
+    exports.createMetadata = function(access_token, templateKey, templateName, fields, hidden) {
+        let fieldsArray = [];
+        try {
+            fieldsArray = JSON.parse(fields);
+        } catch(e) {
+            winston.log('error', 'fields can not be parsed as an json array', fields);
+            process.exit(1);
+        }
+        return boxclient.metadata.create({
+            'access_token': access_token,
+            'body_params': {
+                "templateKey": templateKey,
+                "displayName": templateName,
+                "fields": fieldsArray, 
+                "hidden": !!hidden
+            }
+        });
+    };
+
+
 })();
