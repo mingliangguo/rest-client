@@ -1,16 +1,19 @@
 (function() {
     'use strict';
 
-    const config = require('../../lib/config.js'),
-        Bluebird = require('bluebird'),
+    const Bluebird = require('bluebird'),
         fs = Bluebird.promisifyAll(require('fs')),
+        yaml = require('js-yaml'),
+        config = yaml.safeLoad(fs.readFileSync('config.yml', 'utf8')),
         winston = require('winston'),
         path = require('path'),
         utils = require('../../lib/utils.js'),
         RestApi = require('../../lib/rest-client.js');
 
-    const BOX_API_HOST = config.BOX_API_BASE_URL,
-        TOKEN_FILE = path.resolve('./', config.BOX_TOKEN_JSON_FILE),
+    const BOX_API_HOST = config.box.api.api_base_url,
+        BOX_CLIENT_ID = config.box.app.client_id,
+        BOX_CLIENT_SECRET = config.box.app.client_secret,
+        TOKEN_FILE = path.resolve('./', config.box.config.token_json_file),
         THUMBNAIL_FILE = path.resolve('./', 'thumbnail.png');
 
     let boxclient = null;
@@ -18,14 +21,14 @@
     let getBoxRestDefinition = function() {
         return {
             'authorize': {
-                'baseUrl':config.BOX_API_BASE_URL,
+                'baseUrl': config.box.api.api_base_url,
                 'endpoint': '/api/oauth2/authorize',
                 'methods': [{
                         'id': 'get',
                         'method': 'GET',
                         'query_params': {
                             'response_type': 'code',
-                            'client_id': config.BOX_CLIENT_ID
+                            'client_id': BOX_CLIENT_ID
                         }
                     },
                     {
@@ -33,7 +36,7 @@
                         'method': 'POST',
                         'query_params': {
                             'response_type': 'code',
-                            'client_id': config.BOX_CLIENT_ID
+                            'client_id': BOX_CLIENT_ID
                         }
                     }
                 ]
@@ -45,8 +48,8 @@
                     'method': 'POST',
                     'body_params': {
                         "grant_type": "authorization_code",
-                        "client_id": config.BOX_CLIENT_ID,
-                        "client_secret": config.BOX_CLIENT_SECRET
+                        "client_id": BOX_CLIENT_ID,
+                        "client_secret": BOX_CLIENT_SECRET
                     },
                     'query_params': {},
                     'callback': function(res) {
@@ -57,15 +60,15 @@
                     'method': 'POST',
                     'body_params': {
                         'grant_type': "urn:ietf:params:oauth:grant-type:jwt-bearer",
-                        'client_id': config.BOX_CLIENT_ID,
-                        'client_secret': config.BOX_CLIENT_SECRET
+                        'client_id': BOX_CLIENT_ID,
+                        'client_secret': BOX_CLIENT_SECRET
                     }
                 }, {
                     'id': 'refresh',
                     'method': 'POST',
                     'body_params': {
-                        "client_id": config.BOX_CLIENT_ID,
-                        "client_secret": config.BOX_CLIENT_SECRET,
+                        "client_id": BOX_CLIENT_ID,
+                        "client_secret": BOX_CLIENT_SECRET,
                         "grant_type": "refresh_token"
                     },
                     'callback': function(res) {
@@ -282,9 +285,9 @@
 
     exports.getOAuthURL = function() {
         let url = [
-            config.BOX_OAUTH_BASE_URL,
+            config.box.api.oauth_base_url,
             "/authorize?response_type=code&client_id=",
-            config.BOX_CLIENT_ID,
+            BOX_CLIENT_ID,
             "&state=security_tokenDKnhMJatFipTAnM0nHlZA"
         ].join("");
         // always dump the oauth URL to the console
@@ -599,7 +602,7 @@
         let fieldsArray = [];
         try {
             fieldsArray = JSON.parse(fields);
-        } catch(e) {
+        } catch (e) {
             winston.log('error', 'fields can not be parsed as an json array', fields);
             process.exit(1);
         }
@@ -608,7 +611,7 @@
             'body_params': {
                 "templateKey": templateKey,
                 "displayName": templateName,
-                "fields": fieldsArray, 
+                "fields": fieldsArray,
                 "hidden": !!hidden
             }
         });

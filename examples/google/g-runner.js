@@ -10,7 +10,8 @@
         gapi = require('./g-client.js'),
         gclient = gapi.getRestClient(),
         utils = require('../../lib/utils.js'),
-        config = require('../../lib/config.js');
+        yaml = require('js-yaml'),
+        config = yaml.safeLoad(fs.readFileSync('config.yml', 'utf8'));
 
     winston.level = process.env.LOG_LEVEL || 'info';
 
@@ -58,7 +59,7 @@
             'contentType': 'form'
         });
     } else {
-        utils.readJsonFromFile(require('path').resolve('./', config.GOOGLE_TOKEN_JSON_FILE)).then(action_handler).catch(function(err) {
+        utils.readJsonFromFile(require('path').resolve('./', config.google.config.token_json_file)).then(action_handler).catch(function(err) {
             winston.log('error', 'error occured during read token file', err);
         });
     }

@@ -1,0 +1,53 @@
+################################################################################
+# Box settings
+################################################################################
+box:
+  api:
+    server_token_grant_type: urn:ietf:params:oauth:grant-type:jwt-bearer
+    server_token_aud: https://api.box.com/oauth2/token
+    server_token_sub_type: enterprise
+    oauth_base_url: https://account.box.com/api/oauth2
+    api_base_url: https://api.box.com
+  app:
+    # Relay-Prod new one
+    client_id: your_client_id
+    client_secret: your_client_secret
+    private_key_file: your_private_key_file_path
+    key_passphrase: your keep phrase
+  config:
+      token_json_file: examples/box/box-tokens.json
+      use_server_token: true
+  enterprise:
+    id: your box enterprise id
+
+################################################################################
+# Google API settings
+################################################################################
+google:
+  api:
+    api_base_url: https://www.googleapis.com
+    oauth_base_url: https://accounts.google.com/o/oauth2/v2/auth;
+  app:
+    client_id: your google app client_id
+    client_secret: your google app client_secret
+    oauth_scope: your google app oauth scope
+    oauth_redirect_url: your google app redirect_uri
+  config:
+    token_json_file: examples/google/g-tokens.json
+
+################################################################################
+# MicroSoft API settings
+################################################################################
+ms:
+  api:
+    api_base_url: https://www.googleapis.com
+    oauth_base_url: https://login.live.com/oauth20_authorize.srf?response_type=code&client_id=%s&redirect_uri=%s&scope=%s
+  app:
+    client_id: your ms app client_id
+    client_secret: your ms app client_secret
+    oauth_redirect_url: your ms app redirect_uri
+    oauth_scope: your ms app oauth scope
+  config:
+    token_json_file: examples/microsoft/m-tokens.json
+
+

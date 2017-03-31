@@ -10,7 +10,8 @@
         boxclient = boxapi.getBoxClient(),
         winston = require('winston'),
         path = require('path'),
-        config = require('../../lib/config.js'),
+        yaml = require('js-yaml'),
+        config = yaml.safeLoad(fs.readFileSync('config.yml', 'utf8')),
         utils = require('../../lib/utils.js'),
         serverToken = require('./server-token.js');
 
@@ -123,14 +124,14 @@
             open(boxapi.getOAuthURL());
         } else if (action === 'token' && yargs.code) {
             boxapi.requestAccessToken(yargs.code);
-        } else if (config.USE_SERVER_TOKEN === true) {
+        } else if (config.box.config.use_server_token === true) {
             winston.log("info", "===> use server token");
             serverToken.getServerToken((res) => {
                 action_handler(res.body);
             });
         } else {
             winston.log("info", "===> use token file");
-            utils.readJsonFromFile(path.resolve('./', config.BOX_TOKEN_JSON_FILE)).then(action_handler).catch(function(err) {
+            utils.readJsonFromFile(path.resolve('./', config.box.config.token_json_file)).then(action_handler).catch(function(err) {
                 console.error(err);
                 if (action === 'oauth') {
                     open(boxclient.getOAuthURL());
