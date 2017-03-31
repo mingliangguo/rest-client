@@ -18,7 +18,7 @@
     let getBoxRestDefinition = function() {
         return {
             'authorize': {
-                'baseUrl': 'https://account.box.com',
+                'baseUrl':config.BOX_API_BASE_URL,
                 'endpoint': '/api/oauth2/authorize',
                 'methods': [{
                         'id': 'get',
