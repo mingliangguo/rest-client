@@ -29,7 +29,28 @@
                         'method': 'GET'
                     }
                 ]
+            },
+            'repos': {
+                'baseUrl': github_base_url,
+                'endpoint': '/repos',
+                'methods': [{
+                        'id': 'getRepo',
+                        'path': '/:orgId/:repoId',
+                        'method': 'GET'
+                    },
+                    {
+                        'id': 'getIssues',
+                        'path': '/:orgId/:repoId/issues',
+                        'method': 'GET'
+                    },
+                    {
+                        'id': 'createIssue',
+                        'path': '/:orgId/:repoId/issues',
+                        'method': 'POST'
+                    }
+                ]
             }
+
         };
     };
 

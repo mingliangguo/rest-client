@@ -19,6 +19,8 @@
             "box_sub_type": config.box.api.server_token_sub_type
         };
 
+        winston.log('debug', 'jwt claims => ', claims);
+
         // sign with RSA SHA256
         const cert = fs.readFileSync(config.box.app.private_key_file); // get private key
 
