@@ -49,8 +49,16 @@
                         'method': 'POST'
                     }
                 ]
+            },
+            'search': {
+                'baseUrl': github_base_url,
+                'endpoint': '/search',
+                'methods': [{
+                    'id': 'searchIssues',
+                    'path': '/issues',
+                    'method': 'GET'
+                }]
             }
-
         };
     };
 
