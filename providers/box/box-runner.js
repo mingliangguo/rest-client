@@ -4,6 +4,7 @@
 
 const yargs = require('yargs').argv,
     open = require('open'),
+    fs = require('fs'),
     path = require('path'),
     BoxApi = require('./box-api'),
     BoxOAuth = require('./box-oauth'),
@@ -11,167 +12,151 @@ const yargs = require('yargs').argv,
     utils = require('./../../lib/utils'),
     config = require('./../../lib/config');
 
-const action_handler = function(boxapi) {
-    const action = yargs.action;
-    let token = {};
+const box_config = config.box;
+const handleAction = (boxapi, args) => {
+    const action = args.action;
     logger.log('info', `action is => [${action}]`);
     switch (action) {
     case 'refresh':
-        // boxclient.getRefreshedAuthToken(token);
-        token = utils.readJsonFromFile(
-            path.resolve('./', config.box.params.config.token_json_file)
+        if (!fs.existsSync(path.resolve('./', box_config.params.config.token_json_file))) {
+            throw new Error(`token file [${box_config.params.config.token_json_file} doesn't exist!]`);
+        }
+        return boxapi.refreshToken(
+            utils.readJsonFromFile(
+                path.resolve('./', box_config.params.config.token_json_file)
+            ).refresh_token
         );
-        boxapi.refreshToken(token.refresh_token);
-        break;
     case 'user':
-        boxapi.getUserInfo(yargs.uid, yargs.fields).then(res => {
-            logger.log('info', `user info is: ${res.body}`);
-        });
-        break;
+        return boxapi.getUserInfo(args.uid, args.fields);
     case 'users':
-        boxapi.getUsers(
-            yargs.filter,
-            yargs.limit,
-            yargs.offset,
-            yargs.login
+        return boxapi.getUsers(
+            args.filter,
+            args.limit,
+            args.offset,
+            args.login
         );
-        break;
     case 'createUser':
-        // requires server token
-        boxapi.createUser(yargs.name, yargs.login);
-        break;
+        return boxapi.createUser(args.name, args.login);
     case 'createFolder':
-        boxapi.createFolder(yargs.name, yargs.pid).then(res => {
-            logger.log('info', `Create folder response: [${res.body}]`);
-        });
-        break;
+        return boxapi.createFolder(args.name, args.pid);
     case 'sharedLink':
-        boxapi.createSharedLink(yargs.fid);
-        break;
+        return boxapi.createSharedLink(args.fid);
     case 'copyFile':
-        boxapi.copyFile(yargs.fid, yargs.pid);
-        break;
+        return boxapi.copyFile(args.fid, args.pid);
     case 'sharedItems':
-        boxapi.getSharedItems(yargs.link);
-        break;
+        return boxapi.getSharedItems(args.link);
     case 'folder':
-        boxapi.getFolderInfo(yargs.fid, yargs.fields);
-        break;
+        return boxapi.getFolderInfo(args.fid, args.fields);
+    case 'trashItems':
+        return boxapi.getTrashedItems(args.limit, args.offset);
+    case 'restoreFolder':
+        return boxapi.restoreFolder(args.fid);
+    case 'restoreAllFolders':
+        return boxapi.restoreAllFolders(args.async);
     case 'addFolderMd':
-        boxapi.addFolderMD(yargs.fid, yargs.tname, yargs.tval);
-        break;
+        return boxapi.addFolderMD(args.fid, args.tname, args.tval);
     case 'getFolderMd':
-        boxapi.getFolderMD(yargs.fid, yargs.tname);
-        break;
+        return boxapi.getFolderMD(args.fid, args.tname);
     case 'renameFolder':
-        boxapi.renameFolder(yargs.fid, yargs.name);
-        break;
+        return boxapi.renameFolder(args.fid, args.name);
     case 'searchMD':
-        boxapi.searchMD();
-        break;
+        return boxapi.searchMD();
     case 'folderItems':
-        boxapi.getFolderItems(yargs.fid, yargs.fields).then(res => {
-            logger.log('info', `folder items response: [${res.body}]`);
-        });
-        break;
+        return boxapi.getFolderItems(args.fid, args.fields);
     case 'file':
-        boxapi.getFileInfo(yargs.fid, yargs.fields);
-        break;
+        return boxapi.getFileInfo(args.fid, args.fields);
     case 'thumbnail':
-        boxapi.getThumbnail(yargs.fid, yargs.link);
-        break;
+        return boxapi.getThumbnail(args.fid, args.link);
     case 'preview':
-        boxapi.createPreviewLink(yargs.fid);
-        break;
+        return boxapi.createPreviewLink(args.fid);
     case 'addCollab':
-        boxapi.addCollab(yargs.fid, yargs.role, yargs.uid, yargs.login);
-        break;
+        return boxapi.addCollab(args.fid, args.role, args.uid, args.login);
+    case 'updateCollab':
+        return boxapi.updateCollab(args.cid, args.role);
     case 'getFolderCollab':
-        boxapi.getFolderCollab(yargs.fid);
-        break;
+        return boxapi.getFolderCollab(args.fid);
     case 'getCollab':
-        boxapi.getCollab(yargs.cid);
-        break;
+        return boxapi.getCollab(args.cid);
     case 'viewPath':
-        boxapi.createViewPath(
-            yargs.fid,
-            yargs.role,
-            yargs.uid,
-            yargs.login
+        return boxapi.createViewPath(
+            args.fid,
+            args.role,
+            args.uid,
+            args.login
         );
-        break;
     case 'oauth':
-        open(boxapi.getOAuthURL());
-        break;
+        return open(boxapi.getOAuthURL());
     case 'authorize':
-        boxapi.initialAuthorize(yargs.redirect_uri);
-        break;
+        return boxapi.initialAuthorize(args.redirect_uri);
     case 'createMetadata':
-        boxapi.createMetadata(
-            yargs.templateKey,
-            yargs.templateName,
-            yargs.fields
+        return boxapi.createMetadata(
+            args.templateKey,
+            args.templateName,
+            args.fields
         );
-        break;
     case 'batchUsers':
-        console.log('uids:' + yargs.uids);
-        boxapi.batchUsers(`${yargs.uids}`.split(',')).then(res => {
-            logger.log('info', 'received response:');
-            logger.log('info', `response is => ${res.body}`);
-            console.log(`response is => ${res.body}`);
-        });
-        break;
+        return boxapi.batchUsers(`${args.uids}`.split(','));
     default:
         logger.log(
             'error',
-            'Action:' + yargs.action + ' is not supported!!!'
+            'Action:' + args.action + ' is not supported!!!'
         );
         break;
     }
 };
 
+const authenticate = args => {
+    let { token, app, eid, user, password } = args;
+    if (token === 'server') {
+        const jwt_app = config.box[`jwt_app_${app}`] || config.box.jwt_app;
+        eid =
+            eid || jwt_app.enterprise.id;
+
+        logger.log('info', `===> use jwt token [${app}] with enterprise[${jwt_app.enterprise.id}]`);
+        let boxapi = new BoxApi(config.box);
+        return boxapi.getServerToken(jwt_app, eid).then(() => boxapi);
+    } else if (token === 'oauth') {
+
+        let boxapi = new BoxApi(config.box);
+        let oauthapp = config.box[`oauth_app_${app}`] || config.box.oauth_app;
+        user = user || oauthapp.user;
+        password = password || oauthapp.password;
+        logger.log('info', `===> start oauth [${oauthapp.redirect_url}] as [${user}] ... `);
+        return BoxOAuth(oauthapp.redirect_url, user, password)
+            .then(params => {
+                logger.log('debug', `oauth params: ${JSON.stringify(params)}`);
+                return boxapi.requestAccessToken(params.oauth_code, oauthapp);
+            })
+            .then(() => boxapi);
+    }
+};
+
 if (Object.keys(yargs).length <= 2) {
-    logger.log('info', 'Usage: node boxclient.js --action=xxx [--yyy=zzz]');
+    logger.log('info', 'Usage: npm run box -- --action=xxx [--yyy=zzz]');
     logger.log(
         'info',
-        'Usage: available actions: refresh, user, sharedItems, token, folders, folderItems'
+        'Sample1: npm run box -- --action=user --uid=me --token=oauth --app=myapp --user=myuser@gmail.com --passwd=password'
+    );
+    logger.log(
+        'info',
+        'Sample2: npm run box -- --action=user --uid=me --token=server --app=myapp --eid=123456'
     );
 } else {
-    const action = yargs.action;
-    logger.log('info', '--- action is:' + action);
-
-    // if (action === 'oauth') {
-    //     open(boxapi.getOAuthURL());
-    // } else if (action === 'token' && yargs.code) {
-    //     boxapi.requestAccessToken(yargs.code);
-    if (yargs.token === 'server') {
-        logger.log('info', '===> use server token');
-        config.box.jwt_app =
-            config.box[`jwt_app_${yargs.app}`] || config.box.jwt_app;
-        let boxapi = new BoxApi(config.box);
-        boxapi.getServerToken().then(() => {
-            action_handler(boxapi);
+    authenticate(yargs)
+        .then(boxapi => handleAction(boxapi, yargs))
+        .then(res => {
+            // only display information if a response object is returned
+            if (res && res.statusCode) {
+                let prettyJson =
+                    res.body && JSON.stringify(JSON.parse(res.body), null, 2);
+                logger.log(
+                    'info',
+                    `Request returns [${res.statusCode}] with body =>\n`,
+                    prettyJson
+                );
+            }
+        })
+        .catch(err => {
+            logger.log('error', 'error received!', err);
         });
-    } else if (yargs.token === 'oauth') {
-        logger.log('info', '===> use token file');
-
-        let oauthapp =
-            config.box[`oauth_app_${yargs.app}`] || config.box.oauth_app;
-        
-        let boxapi = new BoxApi(config.box);
-        BoxOAuth(oauthapp.redirect_url, oauthapp.user, oauthapp.password)
-            .then(params => {
-                logger.log('info', `oauth params: ${JSON.stringify(params)}`);
-                return boxapi.requestAccessToken(params.oauth_code);
-            })
-            .then(() => {
-                action_handler(boxapi);
-            })
-            .catch(function(err) {
-                console.error(err);
-                if (action === 'oauth') {
-                    open(boxapi.getOAuthURL());
-                }
-            });
-    }
 }

@@ -5,6 +5,7 @@ const fs = require('fs'),
     logger = require('./../../lib/logger'),
     path = require('path'),
     utils = require('./../../lib/utils'),
+    Executor = require('./../../lib/executor'),
     RestApi = require('./../../lib/restapi');
 
 const THUMBNAIL_FILE = path.resolve('./', 'thumbnail.png');
@@ -126,6 +127,11 @@ module.exports = class BoxApi extends RestApi {
                     {
                         id: 'post',
                         method: 'POST'
+                    },
+                    {
+                        id: 'trashItems',
+                        path: '/trash/items',
+                        method: 'GET'
                     }
                 ]
             },
@@ -143,6 +149,10 @@ module.exports = class BoxApi extends RestApi {
                     {
                         id: 'info',
                         mehtod: 'GET'
+                    },
+                    {
+                        id: 'restore',
+                        method: 'POST'
                     },
                     {
                         id: 'createSharedLink',
@@ -263,6 +273,10 @@ module.exports = class BoxApi extends RestApi {
                     {
                         id: 'delete',
                         method: 'DELETE'
+                    },
+                    {
+                        id: 'update',
+                        method: 'PUT'
                     }
                 ]
             },
@@ -400,11 +414,13 @@ module.exports = class BoxApi extends RestApi {
         }
     }
 
-    getResponseHandler(res, options, err) {
+    getResponseHandler(options, res, err) {
         if (res && res.statusCode === 401) {
             return this.getServerToken().then(() => this.retry(options, 10));
         }
-        return this.shouldRetry(options, res, err) ? this.retry(options, options.__retryOptions.wait_time) : res;
+        return this.shouldRetry(options, res, err)
+            ? this.retry(options, options.__retryOptions.wait_time)
+            : res;
     }
 
     getOAuthURL() {
@@ -439,6 +455,16 @@ module.exports = class BoxApi extends RestApi {
         return this.agent.collaboration.delete({
             path_params: {
                 cid: cid
+            }
+        });
+    }
+    updateCollab(cid, role) {
+        return this.agent.collaboration.update({
+            path_params: {
+                cid: cid
+            },
+            body_params: {
+                role: role
             }
         });
     }
@@ -518,10 +544,10 @@ module.exports = class BoxApi extends RestApi {
                 ancestor_folder_ids: '6887024810',
                 mdfilters: JSON.stringify([
                     {
-                        templateKey: 'IBM_TASKFLOW_METADATA_TEMPLATE_TEST',
+                        templateKey: 'METADATA_TEMPLATE_TEST',
                         scope: 'enterprise',
                         filters: {
-                            taskflowTemplateRefName: 'greatTaskflow'
+                            filter_key: 'mykey'
                         }
                     }
                 ])
@@ -559,6 +585,57 @@ module.exports = class BoxApi extends RestApi {
             },
             query_params: {
                 fields: fields
+            }
+        });
+    }
+
+    restoreFolder(fid) {
+        return this.agent.folder.restore({
+            path_params: {
+                fid: fid
+            }
+        });
+    }
+
+    restoreAllFolders(async = false, folderRestored = 0) {
+        return this.getTrashedItems()
+            .then(res =>
+                JSON.parse(res.body)
+                    .entries.filter(item => item.type === 'folder')
+                    .map(item => [item.id])
+            )
+            .then(fids => {
+                if (fids && fids.length > 0) {
+                    folderRestored += fids.length;
+                    logger.log(
+                        'info',
+                        `[${fids.length}] folders to be restored...`
+                    );
+                    return new Executor({
+                        func: this.restoreFolder,
+                        context: this,
+                        async: async,
+                        dynamicArgs: fids
+                    })
+                        .exec()
+                        .then(() =>
+                            this.restoreAllFolders(async, folderRestored)
+                        );
+                } else {
+                    logger.log(
+                        'info',
+                        `Total [${folderRestored}] folders have been restored...`
+                    );
+                    return;
+                }
+            });
+    }
+
+    getTrashedItems(limit = 100, offset = 0) {
+        return this.agent.folders.trashItems({
+            query_params: {
+                limit: limit,
+                offset: offset
             }
         });
     }
@@ -710,11 +787,14 @@ module.exports = class BoxApi extends RestApi {
         });
     }
 
-    requestAccessToken(code) {
+    requestAccessToken(code, oauth_app) {
+        oauth_app = oauth_app || this.oauth_app;
         return this.agent.token
             .code({
                 body_params: {
-                    code: code
+                    code: code,
+                    client_id: oauth_app.client_id,
+                    client_secret: oauth_app.client_secret
                 },
                 contentType: 'form'
             })
@@ -819,10 +899,11 @@ module.exports = class BoxApi extends RestApi {
         });
     }
 
-    getServerToken() {
+    getServerToken(jwt_app, eid) {
+        jwt_app = jwt_app || this.jwt_app;
         const claims = {
-            iss: this.jwt_app.client_id,
-            sub: `${this.jwt_app.enterprise.id}`,
+            iss: jwt_app.client_id,
+            sub: `${eid || jwt_app.enterprise.id}`,
             aud: this.api.oauth_jwt_aud,
             jti: 'abcM4yeY3W63TxHa9jFek85def' + Math.random(), //jti has to be between 16 and 128.
             box_sub_type: this.api.oauth_jwt_sub_type
@@ -831,19 +912,19 @@ module.exports = class BoxApi extends RestApi {
         logger.log('debug', 'jwt claims => ', claims);
 
         // sign with RSA SHA256
-        if (!fs.existsSync(this.jwt_app.private_key_file)) {
+        if (!fs.existsSync(jwt_app.private_key_file)) {
             // if the key file doesn't exist, throw exceptions
             throw new Error(
-                `The key file[${this.jwt_app.private_key_file}] doesn't exist`
+                `The key file[${jwt_app.private_key_file}] doesn't exist`
             );
         }
-        const cert = fs.readFileSync(this.jwt_app.private_key_file); // get private key
+        const cert = fs.readFileSync(jwt_app.private_key_file); // get private key
 
         const token = jwt.sign(
             claims,
             {
                 key: cert,
-                passphrase: this.jwt_app.key_passphrase
+                passphrase: jwt_app.key_passphrase
             },
             {
                 algorithm: 'RS256',
@@ -855,8 +936,8 @@ module.exports = class BoxApi extends RestApi {
         return this.agent.token
             .server({
                 body_params: {
-                    client_id: this.jwt_app.client_id,
-                    client_secret: this.jwt_app.client_secret,
+                    client_id: jwt_app.client_id,
+                    client_secret: jwt_app.client_secret,
                     assertion: token,
                     grant_type: this.api.oauth_jwt_grant_type
                 },

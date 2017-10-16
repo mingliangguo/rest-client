@@ -70,5 +70,12 @@ describe('utils provides a collection of utility methods', function () {
         expect(color.length).to.eq(8);
     });
 
+    it('padding() should prepend "0" in front of a given string to make up the expected length.', () => {
+        let num = 26;
+        let result = utils.padding(num, 5);
+        expect(result).to.eq('00026');
+    });
+
+
 
 });

@@ -18,8 +18,8 @@ box:
         # id: 12345678
    oauth_app:
     # your oauth app config
-    client_id: 7x8n2ju08wal5xg85tyjamtshdth0gp5
-    client_secret: cHjgMUBLlyvkjpRDI00ojmkPGysdMmrF
+    client_id: your_oauth_app_client_id
+    client_secret: your_oauth_app_client_secret
     redirect_url: https://your_redirect_url
     user: your_user@domain.com
     password: your_password
