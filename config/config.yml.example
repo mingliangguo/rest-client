@@ -3,23 +3,26 @@
 ################################################################################
 box:
   api:
-    server_token_grant_type: urn:ietf:params:oauth:grant-type:jwt-bearer
-    server_token_aud: https://api.box.com/oauth2/token
-    server_token_sub_type: enterprise
     oauth_base_url: https://account.box.com/api/oauth2
     api_base_url: https://api.box.com
-  app:
-    # Relay-Prod new one
+    oauth_jwt_grant_type: urn:ietf:params:oauth:grant-type:jwt-bearer
+    oauth_jwt_aud: https://api.box.com/oauth2/token
+    oauth_jwt_sub_type: enterprise
+  jwt_app:
     client_id: your_client_id
     client_secret: your_client_secret
     private_key_file: your_private_key_file_path
     key_passphrase: your keep phrase
-  config:
-      token_json_file: examples/box/box-tokens.json
-      use_server_token: true
-  enterprise:
-    id: your box enterprise id
-
+    enterprise:
+        # your enterprise
+        # id: 12345678
+   oauth_app:
+    # your oauth app config
+    client_id: 7x8n2ju08wal5xg85tyjamtshdth0gp5
+    client_secret: cHjgMUBLlyvkjpRDI00ojmkPGysdMmrF
+    redirect_url: https://your_redirect_url
+    user: your_user@domain.com
+    password: your_password
 ################################################################################
 # Google API settings
 ################################################################################
