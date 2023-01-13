@@ -3,7 +3,7 @@
     "version": "0.0.1",
     "description": "A Rest Client framework to easily support different Rest APIs",
     "dependencies": {
-        "body-parser": "^1.17.2",
+        "body-parser": "^1.20.1",
         "cheerio": "^0.22.0",
         "connect-busboy": "^0.0.2",
         "dateformat": "^2.0.0",
